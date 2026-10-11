@@ -6,13 +6,13 @@ const BASE_URL =
 // Main Axios Instance
 export const axiosInstance = axios.create({
   baseURL: BASE_URL,
-  withCredentials: true, // cookie (refresh token) automatic send korbe
+  withCredentials: true, // cookie (refresh token) automatic
 });
 
 // Request Interceptor
-// Har request e access token header e add korbe
+// Add Authorization header with token from Zustand store (window.__authToken) if available.
 axiosInstance.interceptors.request.use((config) => {
-  // Zustand store theke token nibo — circular import avoid korte dynamic import
+  // Get token from global window object (set by Zustand store)
   const token =
     typeof window !== "undefined"
       ? window.__authToken // authStore set korbe ei global
@@ -25,7 +25,7 @@ axiosInstance.interceptors.request.use((config) => {
 });
 
 // Response Interceptor
-// 401 aile → refresh token diye notun access token nao → retry
+// when 401 Unauthorized, try to refresh token using cookie (refresh token) and retry the request
 let isRefreshing = false;
 let failedQueue: Array<{
   resolve: (token: string) => void;
@@ -45,14 +45,14 @@ axiosInstance.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
 
-    // 401 + already retry kora ni + refresh endpoint na
+    // Check if the error is 401 Unauthorized and the request has not been retried yet
     if (
       error.response?.status === 401 &&
       !originalRequest._retry &&
       !originalRequest.url?.includes("/auth/refresh")
     ) {
       if (isRefreshing) {
-        // Already refreshing — queue e rakho
+        // If a refresh request is already in progress, queue the current request and wait for the new token
         return new Promise((resolve, reject) => {
           failedQueue.push({ resolve, reject });
         }).then((token) => {
@@ -65,11 +65,11 @@ axiosInstance.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        // Cookie e thaka refresh token diye new access token nao
+        // Refresh token request
         const { data } = await axiosInstance.post("/auth/refresh");
         const newToken = data.data.accessToken;
 
-        // Global e set koro — next requests e use hobe
+        // Update the global token in window object
         if (typeof window !== "undefined") {
           window.__authToken = newToken;
         }
@@ -80,7 +80,7 @@ axiosInstance.interceptors.response.use(
       } catch (refreshError) {
         processQueue(refreshError, null);
 
-        // Refresh o fail korle — logout
+        // If refresh fails, clear the token and redirect to login page
         if (typeof window !== "undefined") {
           window.__authToken = undefined;
           // eslint-disable-next-line @next/next/no-location-assign-relative-destination

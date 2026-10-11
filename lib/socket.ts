@@ -6,7 +6,7 @@ const SOCKET_URL =
 let socket: Socket | null = null;
 
 //  Connect
-// Login er পরে token দিয়ে connect করবো
+// Coneet when user login and disconnect when user logout
 export const connectSocket = (token: string): Socket => {
   if (socket?.connected) return socket;
 
@@ -33,7 +33,7 @@ export const connectSocket = (token: string): Socket => {
 };
 
 // Disconnect
-// Logout er somoy disconnect
+// Disconnect when user logout
 export const disconnectSocket = () => {
   if (socket) {
     socket.disconnect();
@@ -42,5 +42,5 @@ export const disconnectSocket = () => {
 };
 
 // Get Instance
-// Jei component e lagbe shekane call korbe
+// Get the current socket instance if connected, otherwise return null
 export const getSocket = (): Socket | null => socket;
